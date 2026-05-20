@@ -1,0 +1,122 @@
+classDiagram
+    direction LR
+
+    class TextToken {
+        +string text
+        +number x
+        +number y
+        +number width
+        +number height
+        +number page
+        +number startIdx
+        +number endIdx
+        +number pageWidth
+        +number pageHeight
+    }
+
+    class RedactionBox {
+        +number x
+        +number y
+        +number w
+        +number h
+        +number page
+        +string text
+        +string category
+        +boolean isActive
+    }
+
+    class HardwareResult {
+        +HardwareTier tier
+        +string reason
+        +any adapter
+    }
+
+    class AppState {
+        +string status
+        +number progress
+        +string[] logs
+        +string hardwareTier
+        +string redactedPdfUrl
+        +boolean isDrawMode
+        +DraftBox[] draftBoxes
+        +setStatus(status) void
+        +toggleDrawMode() void
+        +setProgress(p) void
+        +addLog(log) void
+        +setHardwareTier(tier) void
+        +setRedactedPdfUrl(url) void
+        +setDraftBoxes(boxes) void
+        +addBox(box) void
+        +removeBox(id) void
+        +toggleBox(id) void
+        +toggleCategory(cat, active) void
+        +reset() void
+    }
+
+    class DraftBox {
+        +string id
+        +number x
+        +number y
+        +number w
+        +number h
+        +number page
+        +string text
+        +string category
+        +boolean isActive
+    }
+
+    class HardwareDetector {
+        +getHardwareTier() HardwareResult
+    }
+
+    class AIEngine {
+        -RegexPattern[] PATTERNS
+        +loadModel(tier, onProgress) InferenceFn
+    }
+
+    class PDFEngine {
+        +processPDF(file) PageData
+    }
+
+    class PIIMapper {
+        -Record CATEGORY_MAP
+        +mapPIIToCoordinates(tokens, entities) RedactionBox[]
+    }
+
+    class Surgeon {
+        +applyRedactions(pageData, boxes, mode) Uint8Array
+    }
+
+    class RedactionCanvas {
+        -boolean isDrawing
+        -Position startPos
+        -Position currentPos
+        +render(pageNum) JSX
+    }
+
+    class PIIApp {
+        -File file
+        -Uint8Array originalBytes
+        -any[] pageData
+        +startRedaction() void
+        +finalizeSurgery() void
+        +handleDownloadAndWipe() void
+    }
+
+    PIIApp --> AppState : uses
+    PIIApp --> HardwareDetector : calls
+    PIIApp --> AIEngine : calls
+    PIIApp --> PDFEngine : calls
+    PIIApp --> PIIMapper : calls
+    PIIApp --> Surgeon : calls
+    PIIApp --> RedactionCanvas : renders
+
+    AppState *-- DraftBox : contains
+    PDFEngine --> TextToken : produces
+    PIIMapper --> RedactionBox : produces
+    PIIMapper --> TextToken : consumes
+    Surgeon --> RedactionBox : consumes
+    RedactionCanvas --> AppState : reads and writes
+
+    style DraftBox fill:#fff3e0,stroke:#f57c00
+    style RedactionBox fill:#fff3e0,stroke:#f57c00
