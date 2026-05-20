@@ -1,97 +1,143 @@
-# 🔒 RedactPDF
+# RedactPDF
 
-**Automated PII Redaction powered by AI • Privacy-First • Client-Side Processing**
+**Automated PII Redaction powered by AI | Privacy-First | Client-Side Processing**
 
-An intelligent document sanitization tool that detects and permanently redacts personally identifiable information (PII) from PDF files using LLM-powered AI and local processing. No data leaves your device.
+An intelligent document sanitization tool that detects and permanently redacts personally identifiable information (PII) from PDF files using transformer-based AI and local processing. No data leaves your device.
 
-🚀 **Live Demo:** [redact-pdf-beta.vercel.app](https://redact-pdf-beta.vercel.app)
-
----
-
-## ✨ Key Features
-
-- 🤖 **LLM-Powered Detection** – Uses Hugging Face transformers for accurate PII identification
-- 🔐 **Client-Side Processing** – All processing happens locally; no server uploads
-- 🎯 **Multi-Entity Support** – Detects names, emails, phones, SSNs, credit cards, IPs, and more
-- 📝 **Interactive Review** – Visual redaction editor with manual override capabilities
-- ⚡ **Smart Hardware Scaling** – Adapts to device capabilities (WebGPU/WASM)
-- 🔥 **Nuclear Redaction** – Pixel-level permanent redaction with zero recovery
-- ♿ **Accessible UI** – ARIA labels, keyboard navigation, semantic HTML
+**Live Demo:** [redact-pdf-beta.vercel.app](https://redact-pdf-beta.vercel.app)
 
 ---
 
-## 🎯 Supported PII Categories
+## Overview
 
-| Category | Examples |
-|----------|----------|
-| **Names** | Person, Organization names |
-| **Contact** | Email addresses, Phone numbers |
-| **Identity** | SSNs, Credit cards, IBAN codes |
-| **Location** | Addresses, Geographic locations |
-| **Technical** | IP addresses, API keys (AWS/custom) |
-| **Temporal** | Dates, times |
+RedactPDF combines a Hugging Face NER transformer with regex pattern matching to detect PII across a PDF's full text layer, maps detected entities to their precise pixel coordinates, and permanently destroys them at the canvas level. The output is a flat, image-only PDF with no text layer, no vector data, and no recoverable content. All processing runs in the browser via WebAssembly or WebGPU; no file is transmitted to any server.
 
 ---
 
-## 🛠️ Tech Stack
+## Key Features
 
-| Layer | Technologies |
-|-------|--------------|
-| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
-| **AI Engine** | Hugging Face Transformers 4.2, ONNX Runtime |
-| **PDF Processing** | PDF.js 5.7, jsPDF 4.2, pdf-lib 1.17 |
-| **State Management** | Zustand 5 |
-| **Icons** | Lucide React 1.14 |
+- **Transformer-Based Detection** -- Hugging Face token-classification model (GLiNer NER) identifies names, organizations, locations, dates, and contact information with high recall.
+- **Regex Fallback Engine** -- Six deterministic patterns cover structured PII: phone numbers, IP addresses, AWS access keys, AWS secrets, CVVs, and sensitive numeric IDs.
+- **Hardware-Adaptive Inference** -- Detects available RAM and WebGPU support at runtime, routing to GPU-accelerated inference (WebGPU) or CPU fallback (WASM) accordingly.
+- **Pixel-Level Redaction** -- Black rectangles are burned directly into the Canvas pixel buffer. The exported PDF is a JPEG image stack with no text layer and no metadata.
+- **Interactive Review** -- A visual editor allows users to toggle, add, or remove individual redaction boxes before finalizing. Category-level toggles support bulk review.
+- **Zero Data Retention** -- No server uploads, no analytics, no cookies. All state is cleared on download.
 
 ---
 
-## 📁 Project Structure
+## Supported PII Categories
+
+| Category   | Examples                                   |
+|------------|--------------------------------------------|
+| Names      | Person names, organization names           |
+| Contact    | Email addresses, phone numbers             |
+| Identity   | SSNs, credit cards, IBAN codes             |
+| Location   | Addresses, geographic locations            |
+| Technical  | IP addresses, AWS access keys and secrets  |
+| Temporal   | Dates, times                               |
+
+---
+
+## Tech Stack
+
+| Layer            | Technologies                                      |
+|------------------|---------------------------------------------------|
+| Frontend         | Next.js 16, React 19, TypeScript, Tailwind CSS 4  |
+| AI Engine        | Hugging Face Transformers.js 4.2, ONNX Runtime    |
+| PDF Processing   | PDF.js 5.7, jsPDF 4.2, pdf-lib 1.17              |
+| State Management | Zustand 5                                         |
+
+---
+
+## My Contributions (Backend Systems Engineer)
+
+I engineered all four core engine modules powering the detection-to-redaction pipeline, and authored the system documentation.
+
+**AI Engine** (`lib/ai-engine.ts`) -- Dual-engine PII detection combining a Hugging Face token-classification transformer (GLiNer NER via ONNX/WebAssembly or WebGPU) with six regex patterns for structured entities. Implemented the SSR-safe dynamic import pattern to prevent Webpack bundling crashes in Next.js server-side rendering.
+
+**PDF Engine** (`lib/pdf-engine.ts`) -- PDF parsing layer using PDF.js that extracts text tokens with full coordinate metadata, renders pages at 3x scale for print-quality previews, and preserves original bytes via safe copy. Includes the descender-padding fix for accurate Y-coordinate alignment from raw PDF transform values.
+
+**PII Mapper** (`lib/mapping.ts`) -- Fuzzy span-mapping algorithm that matches NER and regex entity spans against PDF text tokens and converts character offsets into percentage-based bounding boxes with deduplication.
+
+**Redaction Surgeon** (`lib/surgeon.ts`) -- Pixel-level flatten-and-burn redaction engine that loads each page onto an HTML Canvas, paints black rectangles directly into the pixel buffer, and exports a flat JPEG stack via jsPDF with no text layer, no vector layer, and no metadata.
+
+I also authored the Use-Case, Sequence, and Class Diagrams (`diagrams/`) and wrote the architecture, algorithm, and implementation sections of the technical report.
+
+---
+
+## Project Structure
 
 ```
 redact-pdf/
-├── app/                    # Next.js App Router
-│   ├── page.tsx           # Main PII detection UI
-│   ├── layout.tsx         # Root layout with metadata
-│   └── globals.css        # Design system & styling
+├── app/                     # Next.js App Router
+│   ├── page.tsx             # Main application and pipeline orchestration
+│   ├── layout.tsx           # Root layout with metadata
+│   └── globals.css          # Design system and styling
 ├── components/
-│   └── RedactionCanvas.tsx # Interactive redaction editor
-├── lib/                    # Core business logic
-│   ├── ai-engine.ts       # Model loading & inference
-│   ├── pdf-engine.ts      # PDF parsing & text extraction
-│   ├── hardware.ts        # Hardware capability detection
-│   ├── mapping.ts         # PII→PDF coordinate mapping
-│   └── surgeon.ts         # Pixel-level redaction engine
+│   ├── RedactionCanvas.tsx  # Interactive redaction editor
+│   └── AuditLog.tsx         # Activity log component
+├── lib/                     # Core backend logic
+│   ├── ai-engine.ts         # Model loading and dual-engine inference
+│   ├── pdf-engine.ts        # PDF parsing and text extraction
+│   ├── hardware.ts          # Hardware capability detection
+│   ├── mapping.ts           # PII-to-PDF coordinate mapping
+│   └── surgeon.ts           # Pixel-level redaction engine
 ├── store/
-│   └── useAppStore.ts     # Zustand state management
+│   └── useAppStore.ts       # Zustand state machine
+├── diagrams/
+│   ├── class_diagram.mmd    # Class diagram (Mermaid source)
+│   ├── sequence_diagram.mmd # Sequence diagram (Mermaid source)
+│   └── use_case.mmd         # Use-case diagram (Mermaid source)
 ├── types/
-│   └── webgpu.d.ts        # WebGPU type definitions
-├── public/
-│   └── pdf.worker.min.mjs # PDF.js web worker
-├── package.json           # Dependencies
-├── next.config.ts         # Webpack ML optimizations
-└── tsconfig.json          # TypeScript config
-
+│   └── webgpu.d.ts          # WebGPU type definitions
+├── next.config.ts           # Webpack ML optimizations
+└── tsconfig.json            # TypeScript configuration
 ```
 
 ---
 
-## 🚀 Quick Start
+## How It Works
+
+**1. Hardware Detection** -- Checks available RAM and WebGPU support, selecting HIGH tier (WebGPU, GPU-accelerated) or LOW tier (WASM, CPU) for model inference.
+
+**2. Model Loading** -- Loads `openai/privacy-filter` on HIGH tier or `onnx-community/gliner-bi-base-v2.0` on LOW tier, quantized to Q4. The model is cached locally on first run (approximately 300MB).
+
+**3. PDF Parsing** -- PDF.js parses the document, extracting text tokens with coordinate metadata. Each page is rendered at 3x scale to a Canvas for a high-fidelity preview, capped at 20 pages.
+
+**4. PII Detection** -- The transformer runs token-classification on each page's full text. Regex patterns run in parallel, covering structured entities the NER model may miss. Results are merged.
+
+**5. Coordinate Mapping** -- Detected entity spans are fuzzy-matched against PDF text tokens and converted to percentage-based bounding boxes, deduplicated by position.
+
+**6. Interactive Review** -- Detected PII is highlighted in a visual editor. Users can toggle individual boxes, bulk-toggle by category, or draw custom redaction boxes.
+
+**7. Pixel-Level Redaction** -- Each page is loaded onto an HTML Canvas. Black rectangles are burned into the pixel buffer. The result is exported as a flat JPEG and assembled into a jsPDF document.
+
+**8. Download and Wipe** -- The sanitized PDF is downloaded. All page data, model state, and bounding boxes are cleared from memory immediately.
+
+---
+
+## Hardware Tiers
+
+| Tier | Trigger              | Model                          | Device     |
+|------|----------------------|--------------------------------|------------|
+| HIGH | RAM >= 8GB + WebGPU  | openai/privacy-filter          | WebGPU     |
+| LOW  | RAM < 8GB or no GPU  | gliner-bi-base-v2.0 (ONNX)    | WASM (CPU) |
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- **Node.js** 18+ (with npm or yarn)
-- **Modern browser** with WebGPU support (Chrome/Edge recommended)
+
+- Node.js 18+
+- Chrome or Edge (recommended for WebGPU support)
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Aakash-Bora/redact-pdf.git
+git clone https://github.com/vyasavi/redact-pdf.git
 cd redact-pdf
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
@@ -99,172 +145,30 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📖 How It Works
-
-### 1️⃣ **Hardware Detection**
-   - Checks available RAM and WebGPU support
-   - Selects HIGH tier (WebGPU) or LOW tier (WASM)
-
-### 2️⃣ **Model Loading**
-   - Loads `openai/privacy-filter` (HIGH) or `gliner-bi-base-v2.0` (LOW)
-   - Caches locally on first run (~300MB)
-
-### 3️⃣ **PDF Analysis**
-   - Parses PDF and extracts text tokens
-   - Generates high-quality page previews
-   - Preserves coordinate metadata
-
-### 4️⃣ **PII Detection**
-   - Runs token-classification on full page text
-   - Combines AI + regex pattern matching
-   - Maps entities to PDF coordinates
-
-### 5️⃣ **Interactive Review**
-   - Display detected PII with visual highlights
-   - Users can toggle/add/remove redactions
-   - Draw custom boxes for manual redaction
-
-### 6️⃣ **Final Redaction**
-   - Burns black pixels directly into page images
-   - Exports flat JPEG stack (no text layer)
-   - Irreversible pixel-level destruction
-
-### 7️⃣ **Download & Wipe**
-   - Downloads sanitized PDF
-   - Clears all data from memory
-   - Zero trace remains
-
----
-
-## 📦 Available Scripts
+## Available Scripts
 
 ```bash
-# Development (with hot reload)
-npm run dev
-
-# Production build
-npm run build
-
-# Start production server
-npm start
-
-# Lint code
-npm run lint
+npm run dev      # Development server with hot reload
+npm run build    # Production build
+npm start        # Start production server
+npm run lint     # Lint code
 ```
 
 ---
 
-## 🧠 State Management (Zustand Store)
-
-The app uses a centralized Zustand store (`store/useAppStore.ts`) to manage:
-
-- **Processing State** – idle → loading-model → processing → reviewing → completed/error
-- **UI State** – draw mode, progress percentage
-- **Data State** – detected boxes, logs, hardware tier, PDF URL
-- **Actions** – toggle boxes, add/remove redactions, category filtering
-
----
-
-## 🔧 Configuration
-
-### Hardware Tiers
-
-| Tier | Trigger | Model | Device |
-|------|---------|-------|--------|
-| **HIGH** | RAM ≥ 8GB + WebGPU | openai/privacy-filter | WebGPU (GPU) |
-| **LOW** | RAM < 8GB or no WebGPU | gliner-bi-base-v2.0 | WASM (CPU) |
-
-### Environment Setup
-
-Create a `.env.local` file if needed:
-```env
-# Optional: Configure model cache directory
-TRANSFORMERS_CACHE=/path/to/cache
-```
-
----
-
-## 🎨 UI/UX Highlights
-
-- **Responsive Design** – Works on desktop, tablet, mobile
-- **Accessibility** – WCAG 2.1 AA compliant with ARIA labels
-- **Dark Mode Ready** – CSS variables for theme switching
-- **Animations** – Smooth transitions and micro-interactions
-- **Error Handling** – User-friendly error messages with recovery options
-
----
-
-## ⚙️ Advanced Features
-
-### Custom Redaction Drawing
-- Toggle "Draw Box" mode in the review interface
-- Click & drag to create custom redaction boxes
-- Hover to delete individual boxes
-
-### Category Filtering
-- Sidebar shows detected PII grouped by category
-- Check/uncheck entire categories at once
-- Individual toggle for each detection
-
-### Regex Pattern Matching
-Fallback patterns for detection:
-- Phone numbers: `(123) 456-7890`
-- Credit cards: 16-digit numbers
-- IPs: `192.168.1.1`
-- AWS keys: `AKIA*`
-
----
-
-## 📄 PDF Processing Pipeline
-
-```
-Input PDF
-    ↓
-[Parse with PDF.js]
-    ↓
-[Extract text tokens + generate previews]
-    ↓
-[Detect PII with AI + Regex]
-    ↓
-[Map entities to coordinates]
-    ↓
-[Interactive Review]
-    ↓
-[Render to Canvas + Burn pixels black]
-    ↓
-[Export as flat JPEG → jsPDF]
-    ↓
-Redacted PDF (Irreversible)
-```
-
----
-
-## 🚀 Deployment
+## Deployment
 
 ### Vercel (Recommended)
 
 ```bash
-# One-click deploy
 npm run build
 vercel deploy --prod
 ```
 
-**Note:** Ensure your Vercel environment has:
-- Node 18+ runtime
-- 512MB+ memory
-- Timeouts set to ≥60s
+Ensure the Vercel environment has Node 18+ runtime, 512MB+ memory, and timeouts set to 60 seconds or more.
 
-### Self-Hosted
+### Docker
 
-```bash
-# Build
-npm run build
-
-# Start
-npm start
-```
-
-Or use Docker:
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -278,79 +182,25 @@ CMD ["npm", "start"]
 
 ---
 
-## 🔒 Privacy & Security
+## Privacy and Security
 
-✅ **Zero Server Storage** – Files never uploaded  
-✅ **Client-Side Processing** – All AI runs locally  
-✅ **No Analytics** – Zero telemetry  
-✅ **No Cookies** – Stateless operation  
-✅ **Pixel-Level Redaction** – Cryptographically irreversible  
-
----
-
-## 🐛 Troubleshooting
-
-### Issue: "Loading Neural Engine" stuck
-- **Solution:** Check browser storage quota (requires ~300MB)
-- Clear browser cache and reload
-- Try in incognito/private mode
-
-### Issue: Model download fails
-- **Solution:** Check internet connection
-- Verify you're not behind a restrictive firewall
-- Try a different browser
-
-### Issue: WebGPU not available
-- **Solution:** Use Chrome/Edge on desktop
-- Falls back to WASM automatically
-- Performance will be slower
+- Files are never uploaded to any server.
+- All AI inference runs locally in the browser.
+- No analytics, no telemetry, no cookies.
+- Redactions are burned into pixel data and cannot be reversed.
 
 ---
 
-## 📚 Key Libraries & APIs
+## Troubleshooting
 
-| Library | Purpose | Docs |
-|---------|---------|------|
-| `@huggingface/transformers` | Token classification | [Docs](https://huggingface.co/docs/transformers.js) |
-| `pdfjs-dist` | PDF parsing | [Docs](https://mozilla.github.io/pdf.js/) |
-| `jspdf` | PDF generation | [Docs](https://github.com/parallax/jsPDF) |
-| `zustand` | State management | [Docs](https://github.com/pmndrs/zustand) |
+**"Loading Neural Engine" is stuck** -- Check browser storage quota (requires approximately 300MB). Clear cache and reload, or try incognito mode.
 
----
+**Model download fails** -- Verify internet connection and confirm you are not behind a restrictive firewall. Try a different browser.
 
-## 🤝 Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Commit changes (`git commit -m 'Add my feature'`)
-4. Push to branch (`git push origin feature/my-feature`)
-5. Open a Pull Request
+**WebGPU unavailable** -- Use Chrome or Edge on desktop. The app falls back to WASM automatically, with slower performance.
 
 ---
 
-## 📝 License
+## License
 
-This project is a fork of [shreenath04/redact-pdf](https://github.com/shreenath04/redact-pdf). Please check the original repository for license information.
-
----
-
-## 🙋 Support & Feedback
-
-- 🐛 **Report Bugs** – Open an issue on GitHub
-- 💡 **Feature Requests** – Discussions welcome
-- ❓ **Questions** – Check existing issues first
-
----
-
-## 🎓 Learning Resources
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Hugging Face Transformers.js](https://huggingface.co/docs/transformers.js)
-- [PDF.js Guide](https://mozilla.github.io/pdf.js/getting_started/)
-- [Zustand Docs](https://github.com/pmndrs/zustand)
-
----
-
-**Made with ❤️ for privacy-conscious developers**
+This project was developed as a team capstone (CS 4366, Texas Tech University). Please contact the repository owner regarding reuse or licensing.
