@@ -4,7 +4,7 @@
 
 An intelligent document sanitization tool that detects and permanently redacts personally identifiable information (PII) from PDF files using transformer-based AI and local processing. No data leaves your device.
 
-**Live Demo:** [redact-pdf-beta.vercel.app](https://redact-pdf-beta.vercel.app)
+**Demo Link:** https://redact-pdf-demo.vercel.app
 
 ---
 
@@ -17,7 +17,7 @@ RedactPDF runs OpenAI's Privacy Filter transformer alongside a regex pattern eng
 ## Key Features
 
 - **Transformer-Based Detection** -- OpenAI's Privacy Filter model (token-classification via Hugging Face Transformers.js) identifies names, organizations, locations, dates, and contact information with high recall.
-- **Regex Fallback Engine** -- Six deterministic patterns cover structured PII: phone numbers, IP addresses, AWS access keys, AWS secrets, CVVs, and sensitive numeric IDs.
+- **Regex Pattern Engine** -- Runs in parallel with the model. Six deterministic patterns cover structured PII the transformer may miss: phone numbers, IP addresses, AWS access keys, and other formatted entities.
 - **Pixel-Level Redaction** -- Black rectangles are burned directly into the Canvas pixel buffer. The exported PDF is a JPEG image stack with no text layer and no metadata.
 - **Interactive Review** -- A visual editor allows users to toggle, add, or remove individual redaction boxes before finalizing. Category-level toggles support bulk review.
 - **Zero Data Retention** -- No server uploads, no analytics, no cookies. All state is cleared on download.
