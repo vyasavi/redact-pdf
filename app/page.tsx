@@ -1,7 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { getHardwareTier } from '@/lib/hardware';
 import { processPDF } from '@/lib/pdf-engine';
 import { loadModel } from '@/lib/ai-engine';
 import { mapPIIToCoordinates } from '@/lib/mapping';
@@ -20,12 +19,8 @@ export default function PIIApp() {
     store.setStatus('loading-model');
 
     try {
-      store.addLog("Detecting hardware...");
-      const hw = await getHardwareTier();
-      store.setHardwareTier(hw.tier);
-
       store.addLog("Initializing OpenAI Privacy Filter...");
-      const model = await loadModel(hw.tier, (p) => {
+      const model = await loadModel((p) => {
         if (p.status === 'progress') store.setProgress(p.progress);
       });
 

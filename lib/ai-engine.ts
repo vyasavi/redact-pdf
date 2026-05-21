@@ -1,4 +1,4 @@
-// src/lib/ai-engine.ts
+// lib/ai-engine.ts
 
 const PATTERNS = [
   { label: 'PHONE', regex: /\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/g },
@@ -9,23 +9,15 @@ const PATTERNS = [
   { label: 'IP_ADDRESS', regex: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g }
 ];
 
-export const loadModel = async (tier: 'HIGH' | 'LOW', onProgress: (p: any) => void) => {
-  // Dynamically import transformers to prevent RAM crashes and Webpack bundling issues during SSR
+export const loadModel = async (onProgress: (p: any) => void) => {
   const { pipeline, env } = await import('@huggingface/transformers');
-  
-  // Disable local models to prevent filesystem access issues in Next.js environments
   env.allowLocalModels = false;
 
-  // THE FIREWALL BYPASS: Essential for university networks
-  const modelId = tier === 'HIGH' ? 'openai/privacy-filter' : 'onnx-community/gliner-bi-base-v2.0';
-
-  const pipelineInstance = await pipeline('token-classification', modelId, {
-    device: tier === 'HIGH' ? 'webgpu' : 'wasm',
+  const pipelineInstance = await pipeline('token-classification', 'openai/privacy-filter', {
     dtype: 'q4',
     progress_callback: onProgress
   });
 
-  // THE FIX: Parameters now correctly include 'options'
   return async (text: string, options: any = {}) => {
     let aiResults: any[] = [];
     try {

@@ -4,7 +4,6 @@ interface AppState {
   status: 'idle' | 'loading-model' | 'processing' | 'reviewing' | 'completed' | 'error';
   progress: number;
   logs: string[]; // This fixes the AuditLog error
-  hardwareTier: string | null;
   redactedPdfUrl: string | null;
   isDrawMode: boolean;
   draftBoxes: Array<{ id: string; x: number; y: number; w: number; h: number; page: number; text?: string; category?: string; isActive?: boolean }>;
@@ -13,7 +12,6 @@ interface AppState {
   toggleDrawMode: () => void;
   setProgress: (p: number) => void;
   addLog: (log: string) => void;
-  setHardwareTier: (tier: string) => void;
   setRedactedPdfUrl: (url: string | null) => void;
   setDraftBoxes: (boxes: any[]) => void;
   addBox: (box: Omit<AppState['draftBoxes'][0], 'id'>) => void;
@@ -27,7 +25,6 @@ export const useAppStore = create<AppState>((set) => ({
   status: 'idle',
   progress: 0,
   logs: [],
-  hardwareTier: null,
   redactedPdfUrl: null,
   isDrawMode: false,
   draftBoxes: [],
@@ -35,7 +32,6 @@ export const useAppStore = create<AppState>((set) => ({
   setStatus: (status) => set({ status }),
   toggleDrawMode: () => set((state) => ({ isDrawMode: !state.isDrawMode })),
   setProgress: (progress) => set({ progress }),
-  setHardwareTier: (hardwareTier) => set({ hardwareTier }),
   setRedactedPdfUrl: (redactedPdfUrl) => set({ redactedPdfUrl }),
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
   setDraftBoxes: (boxes) => set({ draftBoxes: boxes.map(b => ({ ...b, id: b.id || crypto.randomUUID(), isActive: b.isActive !== false })) }),
