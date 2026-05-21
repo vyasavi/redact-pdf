@@ -14,6 +14,7 @@ export const loadModel = async (onProgress: (p: any) => void) => {
   env.allowLocalModels = false;
 
   const pipelineInstance = await pipeline('token-classification', 'openai/privacy-filter', {
+    device: 'wasm',
     dtype: 'q4',
     progress_callback: onProgress
   });
