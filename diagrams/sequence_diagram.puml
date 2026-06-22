@@ -1,0 +1,94 @@
+@startuml RedactPDF_SequenceDiagram
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor User
+participant "PIIApp" as UI
+participant "AppState" as Store
+participant "AIEngine" as AI
+participant "PDFEngine" as PDF
+participant "PIIMapper" as Map
+participant "RedactionCanvas" as Canvas
+participant "Surgeon" as Surg
+
+== Phase 1 — Upload and Scan ==
+
+User -> UI : Upload PDF file
+UI -> Store : reset()
+UI -> Store : setStatus("loading-model")
+
+UI -> AI : loadModel(onProgress)
+activate AI
+AI -> AI : dynamic import transformers
+AI -> AI : pipeline("token-classification",\n"openai/privacy-filter", webgpu, q4)
+AI --> UI : inferenceFn
+deactivate AI
+
+UI -> Store : setStatus("processing")
+UI -> PDF : processPDF(file)
+activate PDF
+PDF -> PDF : parse via pdfjs-dist (max 20 pages)
+PDF -> PDF : render pages to canvas at 3x scale
+PDF -> PDF : extract TextTokens with coordinates
+PDF --> UI : { pageData, originalBytes }
+deactivate PDF
+
+loop for each page
+  UI -> AI : inferenceFn(page.fullText)
+  AI -> AI : NER inference + regex patterns
+  AI --> UI : piiEntities[]
+  UI -> Map : mapPIIToCoordinates(page.items, piiEntities)
+  activate Map
+  Map -> Map : fuzzy-match tokens to entities
+  Map -> Map : apply CATEGORY_MAP labels
+  Map -> Map : convert to percentage boxes, set isActive
+  Map --> UI : RedactionBox[]
+  deactivate Map
+end
+
+UI -> Store : setDraftBoxes(allBoxes)
+UI -> Store : setStatus("reviewing")
+
+== Phase 2 — Review and Edit ==
+
+User -> Canvas : click a redaction box
+Canvas -> Store : toggleBox(id)
+User -> UI : check or uncheck a category
+UI -> Store : toggleCategory(category, isActive)
+User -> Canvas : enable Draw Mode
+Canvas -> Store : toggleDrawMode()
+User -> Canvas : drag to draw a box
+Canvas -> Store : addBox(x, y, w, h, page)
+User -> Canvas : remove a box
+Canvas -> Store : removeBox(id)
+
+== Phase 3 — Finalize ==
+
+User -> UI : click Finalize Redactions
+UI -> Store : setStatus("processing")
+UI -> UI : filter draftBoxes where isActive
+UI -> Surg : applyRedactions(pageData, activeBoxes, "BLACKOUT")
+activate Surg
+loop for each page
+  Surg -> Surg : load preview onto Canvas
+  Surg -> Surg : burn black rectangles into pixels
+  Surg -> Surg : export flat JPEG
+  Surg -> Surg : add image to jsPDF document
+end
+Surg --> UI : Uint8Array (redacted PDF)
+deactivate Surg
+
+UI -> UI : create Blob URL
+UI -> Store : setRedactedPdfUrl(url)
+UI -> Store : setStatus("completed")
+
+== Phase 4 — Download and Wipe ==
+
+User -> UI : preview redacted PDF
+User -> UI : click Download PDF
+UI -> User : browser downloads redacted_document.pdf
+UI -> UI : setTimeout 500ms
+UI -> Store : reset()
+Store -> Store : revoke Blob URL, clear all state
+
+@enduml

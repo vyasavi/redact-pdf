@@ -1,0 +1,123 @@
+@startuml RedactPDF_ClassDiagram
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+left to right direction
+
+' ─── Data structures ─────────────────────────────────────────
+class TextToken <<interface>> {
+  +text : string
+  +x : number
+  +y : number
+  +width : number
+  +height : number
+  +page : number
+  +startIdx : number
+  +endIdx : number
+  +pageWidth : number
+  +pageHeight : number
+}
+
+class RedactionBox <<interface>> {
+  +x : number
+  +y : number
+  +w : number
+  +h : number
+  +page : number
+  +text? : string
+  +category? : string
+  +isActive? : boolean
+}
+
+class DraftBox <<interface>> {
+  +id : string
+  +x : number
+  +y : number
+  +w : number
+  +h : number
+  +page : number
+  +text? : string
+  +category? : string
+  +isActive? : boolean
+}
+
+' ─── State store (Zustand) ───────────────────────────────────
+class AppState <<store>> {
+  +status : Status
+  +progress : number
+  +logs : string[]
+  +redactedPdfUrl : string | null
+  +isDrawMode : boolean
+  +draftBoxes : DraftBox[]
+  +setStatus(status) : void
+  +setProgress(p) : void
+  +addLog(log) : void
+  +toggleDrawMode() : void
+  +setRedactedPdfUrl(url) : void
+  +setDraftBoxes(boxes) : void
+  +addBox(box) : void
+  +removeBox(id) : void
+  +toggleBox(id) : void
+  +toggleCategory(category, isActive) : void
+  +reset() : void
+}
+
+' ─── Engine modules ──────────────────────────────────────────
+class AIEngine <<module>> {
+  -PATTERNS : RegexPattern[]
+  +loadModel(onProgress) : InferenceFn
+}
+
+class PDFEngine <<module>> {
+  +processPDF(file) : PageData
+}
+
+class PIIMapper <<module>> {
+  -CATEGORY_MAP : Record
+  +mapPIIToCoordinates(tokens, piiEntities) : RedactionBox[]
+}
+
+class Surgeon <<module>> {
+  +applyRedactions(pageData, boxes, mode) : Uint8Array
+}
+
+' ─── UI components ───────────────────────────────────────────
+class PIIApp <<component>> {
+  -file : File
+  -originalBytes : Uint8Array
+  -pageData : PageData[]
+  +startRedaction() : void
+  +finalizeSurgery() : void
+  +handleDownloadAndWipe() : void
+}
+
+class RedactionCanvas <<component>> {
+  -isDrawing : boolean
+  -startPos : Position
+  -currentPos : Position
+  +handleMouseUp(e) : void
+}
+
+class AuditLog <<component>> {
+  +render() : JSX
+}
+
+' ─── Relationships ───────────────────────────────────────────
+PIIApp --> AppState : uses
+PIIApp --> AIEngine : calls loadModel()
+PIIApp --> PDFEngine : calls processPDF()
+PIIApp --> PIIMapper : calls mapPIIToCoordinates()
+PIIApp --> Surgeon : calls applyRedactions()
+PIIApp --> RedactionCanvas : renders
+PIIApp --> AuditLog : renders
+
+RedactionCanvas --> AppState : reads and writes
+AuditLog --> AppState : reads logs
+
+AppState *-- DraftBox : contains
+PDFEngine ..> TextToken : produces
+PIIMapper ..> TextToken : consumes
+PIIMapper ..> RedactionBox : produces
+Surgeon ..> RedactionBox : consumes
+
+@enduml

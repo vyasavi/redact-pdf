@@ -1,0 +1,33 @@
+---
+config:
+  layout: fixed
+---
+flowchart LR
+ subgraph SystemBoundary["RedactPDF System Boundary"]
+        UC_Upload(["Upload PDF Document"])
+        UC_Process(["Process & Preview PDF"])
+        UC_Detect(["Detect PII Entities"])
+        UC_Map(["Map PII to Coordinates"])
+        UC_Review(["Review Redactions"])
+        UC_Apply(["Apply Redactions"])
+        UC_Download(["Download Redacted PDF"])
+        UC_LoadModel(["Load AI NER Model"])
+        UC_EditManually(["Edit Boxes Manually"])
+        UC_ViewLogs(["View Redaction Logs"])
+        UC_Reset(["Reset Application"])
+        UC_Blackout(["Blackout Redaction"])
+        UC_Synthetic(["Synthetic Redacted"])
+  end
+    User(("User")) --- UC_EditManually & UC_ViewLogs & UC_Reset & UC_Review & UC_Download & UC_Upload
+    OpenAI(("OpenAI Privacy Filter")) --- UC_LoadModel
+    UC_Upload -. &lt;&lt;include&gt;&gt; .-> UC_Process
+    UC_Process -. &lt;&lt;include&gt;&gt; .-> UC_Detect & UC_LoadModel
+    UC_Detect -. &lt;&lt;include&gt;&gt; .-> UC_Map
+    UC_Map -. &lt;&lt;include&gt;&gt; .-> UC_Review
+    UC_Review -. &lt;&lt;include&gt;&gt; .-> UC_Apply
+    UC_Apply -. &lt;&lt;include&gt;&gt; .-> UC_Download
+    UC_EditManually -. &lt;&lt;extend&gt;&gt; .-> UC_Review
+    UC_Blackout -. &lt;&lt;extend&gt;&gt; .-> UC_Review
+    UC_Synthetic -. &lt;&lt;extend&gt;&gt; .-> UC_Apply
+    UC_Reset -. &lt;&lt;extend&gt;&gt; .-> UC_Apply
+    UC_ViewLogs -. &lt;&lt;extend&gt;&gt; .-> UC_Apply
